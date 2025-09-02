@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ShoppingCart, Scale, Calendar as CalendarIcon, Users, BarChart2, Settings, Trash2, Plus, Minus, CreditCard, Wallet } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, BarChart, Bar } from "recharts";
+import { todayMoscowISO, toMoscowSlotISO } from "@/lib/time";
 
 // ---------- Helpers / constants ----------
 const NONE = "__NONE__"; // sentinel for empty Select choice (valid non-empty string)
@@ -20,7 +21,6 @@ const NONE = "__NONE__"; // sentinel for empty Select choice (valid non-empty st
 const currency = (n:number) => new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 2 }).format(n || 0);
 const kg = (n:number) => `${(n ?? 0).toFixed(2)} кг`;
 const rand = (min:number, max:number) => Math.random() * (max - min) + min;
-const todayISO = () => new Date().toISOString().slice(0, 10);
 
 const LS = {
   products: "fishing_products",
@@ -425,7 +425,7 @@ function PayDialog({ amount, onCancel, onConfirm, customerId, customers, setCust
 function Reservations({ gazebos, customers, reservations, setReservations }:{
   gazebos:any[], customers:any[], reservations:any[], setReservations:any
 }){
-  const [date, setDate] = useState(todayISO());
+  const [date, setDate] = useState(todayMoscowISO());
   const [selGazebo, setSelGazebo] = useState<string>(gazebos[0]?.id ?? NONE);
   const hours = Array.from({length: 15}, (_,i)=> i+8); // 08..22
 
@@ -436,8 +436,8 @@ function Reservations({ gazebos, customers, reservations, setReservations }:{
 
   function toggleSlot(hour:number){
     if (selGazebo === NONE) return;
-    const startAt = new Date(`${date}T${String(hour).padStart(2,'0')}:00:00`).toISOString();
-    const endAt = new Date(`${date}T${String(hour+1).padStart(2,'0')}:00:00`).toISOString();
+    const startAt = toMoscowSlotISO(date,hour);
+    const endAt = toMoscowSlotISO(date,hour+1);
     const existing = (dayRes as any[]).find(r => r.startAt===startAt);
     if (existing){
       setReservations(reservations.filter(r => r.id !== existing.id));
