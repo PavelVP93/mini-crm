@@ -23,7 +23,8 @@
     "react-dom": "18.2.0",
     "recharts": "^2.12.7",
     "tailwind-merge": "^2.6.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "react-input-mask": "^2.0.4"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",
