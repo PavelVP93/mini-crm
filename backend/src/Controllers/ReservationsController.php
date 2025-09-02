@@ -22,9 +22,18 @@ class ReservationsController {
   public function create($req,$res){
     $d=(array) json_decode((string)$req->getBody(), true);
     $id='r_'.bin2hex(random_bytes(9));
-    try{$start=Time::fromClient($d['startAt']);$end=Time::fromClient($d['endAt']);}catch(\Exception $e){return json($res,['error'=>'Invalid datetime'],400);}
+    try{
+      $start=Time::fromClient($d['startAt']);
+      $end=Time::fromClient($d['endAt']);
+    }catch(\Exception $e){
+      return json($res,['error'=>'Invalid datetime'],400);
+    }
+    $customerId=$d['customer_id']??null;
+    if(!$customerId){
+      return json($res,['error'=>'customer_id required'],400);
+    }
     DB::pdo()->prepare("INSERT INTO reservation (id,resourceId,customerId,status,startAt,endAt,prepayAmount,notes) VALUES (?,?,?,?,?,?,?,?)")
-      ->execute([$id,$d['resourceId'],$d['customerId'],$d['status']??'HELD',$start,$end,$d['prepayAmount']??null,$d['notes']??null]);
+      ->execute([$id,$d['resourceId'],$customerId,$d['status']??'HELD',$start,$end,$d['prepayAmount']??null,$d['notes']??null]);
     return json($res,['id'=>$id],201);
   }
   public function update($req,$res,$args){

@@ -4,7 +4,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "node test/time.test.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
