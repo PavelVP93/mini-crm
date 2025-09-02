@@ -35,5 +35,10 @@ class ProductsController {
     }
     return json($res,['ok'=>true]);
   }
+  public function delete($req,$res,$args){
+    $id=$args['id'];
+    DB::pdo()->prepare("DELETE FROM product WHERE id=?")->execute([$id]);
+    return json($res,['ok'=>true]);
+  }
   private static function cuid($p){ return $p.'_'.bin2hex(random_bytes(9)); }
 }
