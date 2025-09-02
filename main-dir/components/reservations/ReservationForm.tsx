@@ -40,6 +40,10 @@ export function ReservationForm({ customers, onSubmit }: ReservationFormProps) {
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!customerId) {
+      alert("Customer is required");
+      return;
+    }
     let id = customerId;
     if (id === "new") {
       id = await createCustomer();
@@ -57,7 +61,7 @@ export function ReservationForm({ customers, onSubmit }: ReservationFormProps) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="customer">Customer</Label>
-        <Select value={customerId} onValueChange={setCustomerId}>
+        <Select value={customerId} onValueChange={setCustomerId} aria-required="true">
           <SelectTrigger id="customer">
             <SelectValue placeholder="Select customer" />
           </SelectTrigger>
@@ -99,7 +103,7 @@ export function ReservationForm({ customers, onSubmit }: ReservationFormProps) {
         <Label htmlFor="notes">Notes</Label>
         <Input id="notes" name="notes" />
       </div>
-      <Button type="submit">Save</Button>
+      <Button type="submit" disabled={!customerId}>Save</Button>
     </form>
   );
 }
