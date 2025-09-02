@@ -1,0 +1,126 @@
+
+RewriteEngine On
+RewriteBase /backend/
+RewriteCond %{REQUEST_METHOD} =OPTIONS
+RewriteRule ^ - [R=204,L]
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+RewriteRule ^ index.php [QSA,L]
+HT
+
+# index.php — фронт-контроллер Slim (без папки public)
+cat > index.php <<'PHP'
+<?php
+declare(strict_types=1);
+require __DIR__ . '/vendor/autoload.php';
+
+use Dotenv\Dotenv;
+use Slim\Factory\AppFactory;
+use Psr\Http\Message\ServerRequestInterface as Request;
+use Psr\Http\Server\RequestHandlerInterface;
+use Slim\Psr7\Response;
+
+if (file_exists(__DIR__.'/.env')) { Dotenv::createImmutable(__DIR__)->load(); }
+
+$app = AppFactory::create();
+
+// CORS
+$app->add(function(Request $req, RequestHandlerInterface $handler) {
+  $resp = $handler->handle($req);
+  $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
+  $allow = $_ENV['CORS_ALLOW_ORIGIN'] ?? $origin;
+  $r = $resp->withHeader('Access-Control-Allow-Origin', $allow)
+            ->withHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+            ->withHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,PUT,DELETE,OPTIONS')
+            ->withHeader('Access-Control-Allow-Credentials', 'true');
+  if ($req->getMethod()==='OPTIONS') return $r->withStatus(204);
+  return $r;
+});
+
+$app->addRoutingMiddleware();
+$error = $app->addErrorMiddleware(true, true, true);
+$error->setDefaultErrorHandler(function($request, $e) {
+  $res = new Response();
+  $res->getBody()->write(json_encode(['error'=>$e->getMessage()], JSON_UNESCAPED_UNICODE));
+  return $res->withHeader('Content-Type','application/json')->withStatus(500);
+});
+
+require __DIR__ . '/src/helpers.php';
+require __DIR__ . '/src/db.php';
+require __DIR__ . '/src/routes.php';
+
+$app->run();
+PHP
+
+# helpers.php
+mkdir -p src src/Controllers sql
+cat > src/helpers.php <<'PHP'
+<?php
+declare(strict_types=1);
+namespace App;
+use Psr\Http\Message\ResponseInterface as Response;
+function json(Response $res, $data, int $code=200): Response {
+  $res->getBody()->write(json_encode($data, JSON_UNESCAPED_UNICODE));
+  return $res->withHeader('Content-Type','application/json')->withStatus($code);
+}
+PHP
+
+# db.php (PDO MySQL)
+cat > src/db.php <<'PHP'
+<?php
+declare(strict_types=1);
+namespace App;
+use PDO;
+class DB {
+  public static function pdo(): PDO {
+    static $pdo=null; if ($pdo) return $pdo;
+    $host=$_ENV['DB_HOST']??'127.0.0.1';
+    $db=$_ENV['DB_NAME']??'fishingpos';
+    $user=$_ENV['DB_USER']??'root';
+    $pass=$_ENV['DB_PASS']??'root';
+    $charset='utf8mb4';
+    $pdo = new PDO("mysql:host=$host;dbname=$db;charset=$charset",$user,$pass,[
+      PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,
+      PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC,
+      PDO::ATTR_EMULATE_PREPARES=>false,
+    ]);
+    return $pdo;
+  }
+}
+PHP
+
+# routes.php (маршруты + подключение контроллеров)
+cat > src/routes.php <<'PHP'
+<?php
+declare(strict_types=1);
+use Slim\App;
+use function App\json;
+
+use App\Controllers\ProductsController;
+use App\Controllers\CustomersController;
+use App\Controllers\OrdersController;
+use App\Controllers\ReservationsController;
+
+/** @var App $app */
+
+// health
+$app->get('/health', fn($req,$res)=>json($res, ['status'=>'ok','time'=>date('c')]));
+
+// products
+$app->get('/products', [ProductsController::class, 'list']);
+$app->post('/products', [ProductsController::class, 'create']);
+$app->patch('/products/{id}', [ProductsController::class, 'update']);
+
+// customers
+$app->get('/customers', [CustomersController::class, 'list']);
+$app->post('/customers', [CustomersController::class, 'create']);
+
+// orders
+$app->get('/orders', [OrdersController::class, 'list']);
+$app->post('/orders', [OrdersController::class, 'create']);
+
+// reservations
+$app->get('/reservations', [ReservationsController::class, 'list']);
+$app->post('/reservations', [ReservationsController::class, 'create']);
+$app->patch('/reservations/{id}', [ReservationsController::class, 'update']);
+
