@@ -18,15 +18,16 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.453.0",
-    "next": "14.2.4",
+    "next": "^15.5.2",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+    "react-input-mask": "^2.0.4",
     "recharts": "^2.12.7",
     "tailwind-merge": "^2.6.0",
-    "tailwindcss-animate": "^1.0.7",
-    "react-input-mask": "^2.0.4"
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
+    "@next/swc-darwin-arm64": "^15.5.2",
     "@types/node": "^20.11.30",
     "@types/react": "^18.3.3",
     "autoprefixer": "^10.4.18",

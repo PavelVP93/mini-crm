@@ -1,13 +1,13 @@
 <?php return array(
     'root' => array(
         'name' => 'fishing/pos-php',
-        'pretty_version' => '1.0.0+no-version-set',
-        'version' => '1.0.0.0',
-        'reference' => null,
+        'pretty_version' => 'dev-main',
+        'version' => 'dev-main',
+        'reference' => '5946ee13122bdc7ea9c3c1d9f2c2cc7b5586d1d5',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
-        'dev' => true,
+        'dev' => false,
     ),
     'versions' => array(
         'fig/http-message-util' => array(
@@ -20,9 +20,9 @@
             'dev_requirement' => false,
         ),
         'fishing/pos-php' => array(
-            'pretty_version' => '1.0.0+no-version-set',
-            'version' => '1.0.0.0',
-            'reference' => null,
+            'pretty_version' => 'dev-main',
+            'version' => 'dev-main',
+            'reference' => '5946ee13122bdc7ea9c3c1d9f2c2cc7b5586d1d5',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

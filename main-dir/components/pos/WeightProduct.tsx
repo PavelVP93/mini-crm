@@ -33,8 +33,8 @@ export default function WeightProduct({ onSubmit }: WeightProductProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-2">
       <div className="flex justify-end">
-        <Tooltip text="Введите вес товара и нажмите \"Добавить\"">
-          <Info className="h-4 w-4 text-muted-foreground" />
+        <Tooltip content="Введите вес товара и нажмите «Добавить»">
+          <Info className="h-4 w-4 text-muted-foreground cursor-pointer" />
         </Tooltip>
       </div>
       <div>

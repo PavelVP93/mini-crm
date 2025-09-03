@@ -8,7 +8,7 @@ if ($method === 'POST') {
   $DB_HOST = $_POST['DB_HOST'] ?? '127.0.0.1';
   $DB_NAME = $_POST['DB_NAME'] ?? 'fishingpos';
   $DB_USER = $_POST['DB_USER'] ?? 'root';
-  $DB_PASS = $_POST['DB_PASS'] ?? '';
+  $DB_PASS = $_POST['DB_PASS'] ?? 'root';
   $CORS    = $_POST['CORS_ALLOW_ORIGIN'] ?? '*';
 
   // 1) Пишем .env
