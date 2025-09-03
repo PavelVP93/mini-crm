@@ -6,7 +6,8 @@ use function App\json;
 
 class CustomersController {
   public function list($req,$res){
-    $q=$_GET['q']??'';
+    $params=$req->getQueryParams();
+    $q=$params['q']??'';
     if($q){
       $st=DB::pdo()->prepare("SELECT c.*,GROUP_CONCAT(cp.phone) phones FROM customer c LEFT JOIN customer_phones cp ON cp.customerId=c.id WHERE c.fullName LIKE ? OR c.phone LIKE ? OR cp.phone LIKE ? GROUP BY c.id ORDER BY c.createdAt DESC LIMIT 200");
       $st->execute(["%$q%","%$q%","%$q%"]); 
@@ -18,7 +19,8 @@ class CustomersController {
     return json($res,$rows);
   }
   public function search($req,$res){
-    $q=$_GET['q']??'';
+    $params=$req->getQueryParams();
+    $q=$params['q']??'';
     if(!$q){ return json($res,[]); }
     $st=DB::pdo()->prepare("SELECT c.*,GROUP_CONCAT(cp.phone) phones FROM customer c LEFT JOIN customer_phones cp ON cp.customerId=c.id WHERE c.fullName LIKE ? OR c.phone LIKE ? OR cp.phone LIKE ? GROUP BY c.id ORDER BY c.fullName LIMIT 200");
     $like="%$q%";

@@ -7,7 +7,8 @@ use function App\json;
 
 class ReservationsController {
   public function list($req,$res){
-    $from=$_GET['from']??null; $to=$_GET['to']??null;
+    $params=$req->getQueryParams();
+    $from=$params['from']??null; $to=$params['to']??null;
     if($from&&$to){
       $st=DB::pdo()->prepare("SELECT * FROM reservation WHERE startAt>=? AND endAt<=? ORDER BY startAt DESC");
       $st->execute([Time::fromClient($from),Time::fromClient($to)]);
