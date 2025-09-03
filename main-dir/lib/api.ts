@@ -44,9 +44,9 @@ class Resource {
     })
   }
 
-  update<T>(id: string | number, payload: unknown) {
+  update<T>(id: string | number, payload: unknown, method: string = 'PATCH') {
     return request<T>(`${this.path}/${id}`, {
-      method: 'PUT',
+      method,
       body: JSON.stringify(payload)
     })
   }
@@ -60,11 +60,19 @@ export class Products extends Resource {
   constructor() {
     super('products')
   }
+
+  update<T>(id: string | number, payload: unknown) {
+    return super.update<T>(id, payload, 'PUT')
+  }
 }
 
 export class Customers extends Resource {
   constructor() {
     super('customers')
+  }
+
+  update<T>(id: string | number, payload: unknown) {
+    return super.update<T>(id, payload, 'PATCH')
   }
 }
 
@@ -78,6 +86,20 @@ export class Reservations extends Resource {
   constructor() {
     super('reservations')
   }
+
+  update<T>(id: string | number, payload: unknown) {
+    return super.update<T>(id, payload, 'PATCH')
+  }
 }
 
-export default { Products, Customers, Orders, Reservations }
+export class Users extends Resource {
+  constructor() {
+    super('users')
+  }
+
+  update<T>(id: string | number, payload: unknown) {
+    return super.update<T>(id, payload, 'PATCH')
+  }
+}
+
+export default { Products, Customers, Orders, Reservations, Users }
