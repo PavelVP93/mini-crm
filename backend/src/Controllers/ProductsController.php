@@ -13,7 +13,9 @@ class ProductsController {
     return json($res,$q->fetchAll());
   }
   public function create($req,$res){
-    $d = (array) json_decode((string)$req->getBody(), true);
+    $d = json_decode((string)$req->getBody(), true);
+    if(json_last_error()!==JSON_ERROR_NONE){ return json($res,['error'=>'Invalid JSON'],400); }
+    $d = (array)$d;
     $id = self::cuid('p');
     DB::pdo()->prepare("INSERT INTO product (id,name,sku,type,unit,isWeightable,isActive,taxCode,groupId) VALUES (?,?,?,?,?,?,?,?,?)")
       ->execute([$id,$d['name'],$d['sku']??null,$d['type'],$d['unit'],(int)($d['isWeightable']??0),(int)($d['isActive']??1),$d['taxCode']??null,$d['groupId']??null]);
@@ -24,7 +26,10 @@ class ProductsController {
     return json($res,['id'=>$id],201);
   }
   public function update($req,$res,$args){
-    $id=$args['id']; $d=(array) json_decode((string)$req->getBody(), true);
+    $id=$args['id'];
+    $d=json_decode((string)$req->getBody(), true);
+    if(json_last_error()!==JSON_ERROR_NONE){ return json($res,['error'=>'Invalid JSON'],400); }
+    $d=(array)$d;
     $fields=[];$vals=[];
     foreach(['name','sku','type','unit','isWeightable','isActive','taxCode','groupId'] as $f){ if(array_key_exists($f,$d)){ $fields[]="$f=?"; $vals[]=$d[$f]; } }
     if ($fields){ $vals[]=$id; DB::pdo()->prepare("UPDATE product SET ".implode(',',$fields)." WHERE id=?")->execute($vals); }

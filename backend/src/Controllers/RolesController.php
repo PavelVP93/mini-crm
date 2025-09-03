@@ -10,14 +10,18 @@ class RolesController {
     return json($res,$st->fetchAll());
   }
   public function create($req,$res){
-    $d=(array) json_decode((string)$req->getBody(), true);
+    $d=json_decode((string)$req->getBody(), true);
+    if(json_last_error()!==JSON_ERROR_NONE){ return json($res,['error'=>'Invalid JSON'],400); }
+    $d=(array)$d;
     $id='r_'.bin2hex(random_bytes(9));
     DB::pdo()->prepare("INSERT INTO roles (id,name) VALUES (?,?)")->execute([$id,$d['name']]);
     return json($res,['id'=>$id],201);
   }
   public function update($req,$res,$args){
     $id=$args['id'];
-    $d=(array) json_decode((string)$req->getBody(), true);
+    $d=json_decode((string)$req->getBody(), true);
+    if(json_last_error()!==JSON_ERROR_NONE){ return json($res,['error'=>'Invalid JSON'],400); }
+    $d=(array)$d;
     DB::pdo()->prepare("UPDATE roles SET name=? WHERE id=?")->execute([$d['name'],$id]);
     return json($res,['ok'=>true]);
   }
