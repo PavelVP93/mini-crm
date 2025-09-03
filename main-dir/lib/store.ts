@@ -1,4 +1,5 @@
 import API from './api'
+import type { Customer } from './types'
 
 export const USE_API = true
 
@@ -25,25 +26,25 @@ function writeLS<T>(key: string, value: T) {
   localStorage.setItem(key, JSON.stringify(value))
 }
 
-function makeStore(api: any, key: string) {
+function makeStore<T extends { id: string | number } = any>(api: any, key: string) {
   return {
-    async get<T>() {
-      if (USE_API) return api.list<T>()
+    async get() {
+      if (USE_API) return api.list() as Promise<T[]>
       return readLS<T[]>(key, [])
     },
-    async save<T>(item: T) {
-      if (USE_API) return api.create<T>(item)
+    async save(item: T) {
+      if (USE_API) return api.create(item) as Promise<T>
       const items = readLS<T[]>(key, [])
       items.push(item)
       writeLS(key, items)
       return item
     },
-    async saveAll<T>(items: T[]) {
+    async saveAll(items: T[]) {
       if (USE_API) return
       writeLS(key, items)
     },
-    async update<T extends { id: string | number }>(id: string | number, patch: Partial<T>) {
-      if (USE_API) return api.update<T>(id, patch)
+    async update(id: string | number, patch: Partial<T>) {
+      if (USE_API) return api.update(id, patch) as Promise<T>
       const items = readLS<T[]>(key, [])
       const idx = items.findIndex((it: any) => it.id === id)
       if (idx >= 0) {
@@ -65,11 +66,11 @@ function makeStore(api: any, key: string) {
 
 const Store = {
   products: makeStore(new API.Products(), LS_KEYS.products),
-  customers: makeStore(new API.Customers(), LS_KEYS.customers),
+  customers: makeStore<Customer>(new API.Customers(), LS_KEYS.customers),
   orders: makeStore(new API.Orders(), LS_KEYS.orders),
   reservations: makeStore(new API.Reservations(), LS_KEYS.reservations),
-  async getReservations<T>() {
-    return this.reservations.get<T>()
+  async getReservations() {
+    return this.reservations.get()
   },
   settings: {
     async get<T>(fallback: T) {

@@ -67,10 +67,10 @@ export default function App() {
   useEffect(() => {
     (async () => {
       const [p, c, o, r, s] = await Promise.all([
-        Store.products.get<any[]>(),
-        Store.customers.get<any[]>(),
-        Store.orders.get<any[]>(),
-        Store.reservations.get<any[]>(),
+        Store.products.get(),
+        Store.customers.get(),
+        Store.orders.get(),
+        Store.reservations.get(),
         Store.settings.get(DEFAULT_SETTINGS)
       ])
       setProducts((p as any[]).length ? (p as any[]) : DEFAULT_PRODUCTS)
@@ -363,7 +363,7 @@ function LastOrdersMini(){
   const [orders, setOrders] = useState<any[]>([]);
   useEffect(() => {
     (async () => {
-      const o = await Store.orders.get<any[]>();
+      const o = await Store.orders.get();
       setOrders(o)
     })()
   }, [])
@@ -474,7 +474,7 @@ function Reservations({ gazebos, customers, reservations, setReservations }:{
         const r = { resourceId: selGazebo, customerId: customers[0].id, status: "HELD", startAt, endAt, prepayAmount: 0 };
         await reservationsApi.create(r);
       }
-      const updated = await Store.getReservations<any[]>();
+      const updated = await Store.getReservations();
       setReservations(updated);
     } catch (e:any) {
       setError(e.message || 'Не удалось обновить бронирование');
