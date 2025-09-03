@@ -5,6 +5,8 @@ use App\Controllers\LoyaltyController;
 use App\Controllers\CatalogController;
 use App\Controllers\UsersController;
 use App\Controllers\RolesController;
+use App\Controllers\OrdersController;
+use App\Controllers\ReservationsController;
 
 $c = new CustomersController();
 $app->get('/customers', [$c, 'list']);
@@ -30,6 +32,16 @@ $app->get('/catalog', [$cat, 'list']);
 $app->post('/catalog', [$cat, 'create']);
 $app->put('/catalog/{id}', [$cat, 'update']);
 $app->delete('/catalog/{id}', [$cat, 'delete']);
+
+$o = new OrdersController();
+$app->get('/orders', [$o, 'list']);
+$app->post('/orders', [$o, 'create']);
+
+$res = new ReservationsController();
+$app->get('/reservations', [$res, 'list']);
+$app->post('/reservations', [$res, 'create']);
+$app->patch('/reservations/{id}', [$res, 'update']);
+$app->delete('/reservations/{id}', [$res, 'delete']);
 
 $u = new UsersController();
 $app->get('/users', [$u, 'list']);
