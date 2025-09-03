@@ -1,0 +1,43 @@
+<?php
+declare(strict_types=1);
+namespace App\Controllers;
+use App\DB;
+use function App\json;
+
+class UsersController {
+  public function list($req,$res){
+    $st=DB::pdo()->query("SELECT u.id,u.fullName,u.email,GROUP_CONCAT(r.id) roleIds FROM users u LEFT JOIN user_roles ur ON ur.userId=u.id LEFT JOIN roles r ON r.id=ur.roleId GROUP BY u.id ORDER BY u.fullName");
+    $rows=$st->fetchAll();
+    foreach($rows as &$r){ $r['roles']=$r['roleIds']?explode(',',$r['roleIds']):[]; unset($r['roleIds']); }
+    return json($res,$rows);
+  }
+  public function create($req,$res){
+    $d=(array) json_decode((string)$req->getBody(), true);
+    $id='u_'.bin2hex(random_bytes(9));
+    DB::pdo()->prepare("INSERT INTO users (id,fullName,email) VALUES (?,?,?)")->execute([$id,$d['fullName'],$d['email']??null]);
+    if(!empty($d['roles'])){
+      $ins=DB::pdo()->prepare("INSERT INTO user_roles (userId,roleId) VALUES (?,?)");
+      foreach($d['roles'] as $r){ $ins->execute([$id,$r]); }
+    }
+    return json($res,['id'=>$id],201);
+  }
+  public function update($req,$res,$args){
+    $id=$args['id'];
+    $d=(array) json_decode((string)$req->getBody(), true);
+    $fields=[];$vals=[];
+    foreach(['fullName','email'] as $f){ if(array_key_exists($f,$d)){ $fields[]="$f=?";$vals[]=$d[$f]; } }
+    if($fields){ $vals[]=$id; DB::pdo()->prepare("UPDATE users SET ".implode(',',$fields)." WHERE id=?")->execute($vals); }
+    if(array_key_exists('roles',$d)){
+      DB::pdo()->prepare("DELETE FROM user_roles WHERE userId=?")->execute([$id]);
+      $ins=DB::pdo()->prepare("INSERT INTO user_roles (userId,roleId) VALUES (?,?)");
+      foreach($d['roles'] as $r){ $ins->execute([$id,$r]); }
+    }
+    return json($res,['ok'=>true]);
+  }
+  public function delete($req,$res,$args){
+    $id=$args['id'];
+    DB::pdo()->prepare("DELETE FROM users WHERE id=?")->execute([$id]);
+    return json($res,['ok'=>true]);
+  }
+}
+
