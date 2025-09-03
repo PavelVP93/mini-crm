@@ -17,6 +17,16 @@ class CustomersController {
     foreach($rows as &$r){ $r['phones']=$r['phones']?explode(',',$r['phones']):[]; }
     return json($res,$rows);
   }
+  public function search($req,$res){
+    $q=$_GET['q']??'';
+    if(!$q){ return json($res,[]); }
+    $st=DB::pdo()->prepare("SELECT c.*,GROUP_CONCAT(cp.phone) phones FROM customer c LEFT JOIN customer_phones cp ON cp.customerId=c.id WHERE c.fullName LIKE ? OR c.phone LIKE ? OR cp.phone LIKE ? GROUP BY c.id ORDER BY c.fullName LIMIT 200");
+    $like="%$q%";
+    $st->execute([$like,$like,$like]);
+    $rows=$st->fetchAll();
+    foreach($rows as &$r){ $r['phones']=$r['phones']?explode(',',$r['phones']):[]; }
+    return json($res,$rows);
+  }
   public function create($req,$res){
     $d=(array) json_decode((string)$req->getBody(), true);
     $phones=$d['phones']??(isset($d['phone'])?[$d['phone']]:[]);
