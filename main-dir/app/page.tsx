@@ -15,6 +15,7 @@ import { ShoppingCart, Scale, Calendar as CalendarIcon, Users, BarChart2, Settin
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, BarChart, Bar } from "recharts";
 import { todayMoscowISO, toMoscowSlotISO } from "@/lib/time";
 import Categories from "@/components/pos/Categories";
+import Store, { USE_API } from "@/lib/store";
 
 // ---------- Helpers / constants ----------
 const NONE = "__NONE__"; // sentinel for empty Select choice (valid non-empty string)
@@ -23,18 +24,6 @@ const currency = (n:number) => new Intl.NumberFormat("ru-RU", { style: "currency
 const kg = (n:number) => `${(n ?? 0).toFixed(2)} кг`;
 const rand = (min:number, max:number) => Math.random() * (max - min) + min;
 
-const LS = {
-  products: "fishing_products",
-  customers: "fishing_customers",
-  orders: "fishing_orders",
-  reservations: "fishing_reservations",
-  settings: "fishing_settings",
-} as const;
-
-function loadLS<T>(key: string, fallback: T): T {
-  try { const v = JSON.parse(localStorage.getItem(key) || "null"); return (v ?? fallback) as T; } catch { return fallback; }
-}
-function saveLS<T>(key: string, value: T) { localStorage.setItem(key, JSON.stringify(value)); }
 
 // ---------- Mock data ----------
 const DEFAULT_PRODUCTS = [
@@ -75,18 +64,27 @@ export default function App() {
   const [tab, setTab] = useState("pos");
 
   useEffect(() => {
-    setProducts(loadLS(LS.products, DEFAULT_PRODUCTS));
-    setCustomers(loadLS(LS.customers, DEFAULT_CUSTOMERS));
-    setOrders(loadLS(LS.orders, []));
-    setReservations(loadLS(LS.reservations, []));
-    setSettings(loadLS(LS.settings, DEFAULT_SETTINGS));
-  }, []);
+    (async () => {
+      const [p, c, o, r, s] = await Promise.all([
+        Store.products.get<any[]>(),
+        Store.customers.get<any[]>(),
+        Store.orders.get<any[]>(),
+        Store.reservations.get<any[]>(),
+        Store.settings.get(DEFAULT_SETTINGS)
+      ])
+      setProducts((p as any[]).length ? (p as any[]) : DEFAULT_PRODUCTS)
+      setCustomers((c as any[]).length ? (c as any[]) : DEFAULT_CUSTOMERS)
+      setOrders(o as any[])
+      setReservations(r as any[])
+      setSettings(s as any)
+    })()
+  }, [])
 
-  useEffect(() => saveLS(LS.products, products), [products]);
-  useEffect(() => saveLS(LS.customers, customers), [customers]);
-  useEffect(() => saveLS(LS.orders, orders), [orders]);
-  useEffect(() => saveLS(LS.reservations, reservations), [reservations]);
-  useEffect(() => saveLS(LS.settings, settings), [settings]);
+  useEffect(() => { if (!USE_API) Store.products.saveAll(products) }, [products])
+  useEffect(() => { if (!USE_API) Store.customers.saveAll(customers) }, [customers])
+  useEffect(() => { if (!USE_API) Store.orders.saveAll(orders) }, [orders])
+  useEffect(() => { if (!USE_API) Store.reservations.saveAll(reservations) }, [reservations])
+  useEffect(() => { Store.settings.save(settings) }, [settings])
 
   // Safety self-test for Select sentinel mapping
   useEffect(() => {
@@ -113,7 +111,7 @@ export default function App() {
           <TabsTrigger value="admin" className="flex items-center gap-2"><Settings className="h-4 w-4"/>Админ</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="pos"><POS products={products} settings={settings} customers={customers} setCustomers={setCustomers} onPaid={(o:any)=>setOrders([o, ...orders])}/></TabsContent>
+        <TabsContent value="pos"><POS products={products} settings={settings} customers={customers} setCustomers={setCustomers} onPaid={async (o:any)=>{ const saved = await Store.orders.save(o); setOrders((os:any[]) => [saved, ...os]); }}/></TabsContent>
         <TabsContent value="reservations"><Reservations gazebos={DEFAULT_GAZEBOS} customers={customers} reservations={reservations} setReservations={setReservations} /></TabsContent>
         <TabsContent value="crm"><CRM customers={customers} setCustomers={setCustomers} orders={orders}/></TabsContent>
         <TabsContent value="reports"><Reports orders={orders} reservations={reservations} products={products}/></TabsContent>
@@ -125,7 +123,7 @@ export default function App() {
 
 // ---------- POS ----------
 function POS({ products, settings, customers, setCustomers, onPaid }:{
-  products:any[], settings:any, customers:any[], setCustomers:any, onPaid:(o:any)=>void
+  products:any[], settings:any, customers:any[], setCustomers:any, onPaid:(o:any)=>Promise<void>
 }){
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string|null>(null);
@@ -201,7 +199,7 @@ function POS({ products, settings, customers, setCustomers, onPaid }:{
     setCart(cart.map((it, i) => i !== idx ? it : ({...it, discountPct: pct, total: (it.weightKg ? it.unitPrice * it.weightKg : it.unitPrice * it.qty) * (1 - pct/100)})));
   }
 
-  function handlePaid(payments:any[]){
+  async function handlePaid(payments:any[]){
     const id = `o_${Date.now()}`;
     const number = `POS-${new Date().toISOString().slice(0,10).replaceAll('-','')}-${String(Math.floor(Math.random()*999)).padStart(3,'0')}`;
     const status = "PAID";
@@ -214,11 +212,13 @@ function POS({ products, settings, customers, setCustomers, onPaid }:{
     // Loyalty earn
     if (custId) {
       const earn = totalsFull.grand >= (settings.loyalty.minOrderForEarn||0) ? Math.floor(totalsFull.grand * (settings.loyalty.earnRate||0)) : 0;
-      setCustomers((cs:any[]) => cs.map(c => c.id===custId ? { ...c, points: (c.points||0)+earn } : c));
+      const existing = customers.find(c => c.id === custId)
+      const updated = await Store.customers.update(custId, { points: (existing?.points || 0) + earn })
+      if (updated) setCustomers((cs:any[]) => cs.map(c => c.id===custId ? updated : c))
     }
 
     const order = { id, number, items, payments, customerId: custId, status, createdAt, paidAt, totals: totalsFull };
-    onPaid(order);
+    await onPaid(order);
     setCart([]);
     setDiscountPct(0);
     setCustomerId(null);
@@ -324,7 +324,7 @@ function POS({ products, settings, customers, setCustomers, onPaid }:{
                 <DialogTrigger asChild>
                   <Button disabled={cart.length===0}>Оплатить</Button>
                 </DialogTrigger>
-                <PayDialog onCancel={()=>setPayOpen(false)} onConfirm={(p:any)=>{ setPayOpen(false); handlePaid(p); }} amount={totals.grand} customerId={customerId} customers={customers} setCustomers={setCustomers} settings={settings}/>
+                <PayDialog onCancel={()=>setPayOpen(false)} onConfirm={async (p:any)=>{ setPayOpen(false); await handlePaid(p); }} amount={totals.grand} customerId={customerId} customers={customers} setCustomers={setCustomers} settings={settings}/>
               </Dialog>
             </div>
           </CardFooter>
@@ -352,7 +352,12 @@ function POS({ products, settings, customers, setCustomers, onPaid }:{
 
 function LastOrdersMini(){
   const [orders, setOrders] = useState<any[]>([]);
-  useEffect(()=>{ setOrders(loadLS(LS.orders, [])); }, []);
+  useEffect(() => {
+    (async () => {
+      const o = await Store.orders.get<any[]>();
+      setOrders(o)
+    })()
+  }, [])
   return (
     <Card>
       <CardHeader className="pb-2"><CardTitle className="text-base">Последние продажи</CardTitle></CardHeader>
@@ -375,7 +380,7 @@ function LastOrdersMini(){
 }
 
 function PayDialog({ amount, onCancel, onConfirm, customerId, customers, setCustomers, settings }:
- { amount:number, onCancel:()=>void, onConfirm:(p:any[])=>void, customerId:string|null, customers:any[], setCustomers:any, settings:any }){
+ { amount:number, onCancel:()=>void, onConfirm:(p:any[])=>Promise<void>, customerId:string|null, customers:any[], setCustomers:any, settings:any }){
   const [cash, setCash] = useState(0);
   const [card, setCard] = useState(amount);
   const [usePoints, setUsePoints] = useState(0);
@@ -412,12 +417,13 @@ function PayDialog({ amount, onCancel, onConfirm, customerId, customers, setCust
       </div>
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>Отмена</Button>
-        <Button disabled={due!==0} onClick={()=>{
+        <Button disabled={due!==0} onClick={async()=>{
           if (customer && usePoints>0){
             const toBurnPts = Math.ceil(usePoints / (settings.loyalty.redeemRate||1));
-            setCustomers((cs:any[]) => cs.map(c => c.id===customer.id ? { ...c, points: Math.max(0, (c.points||0) - toBurnPts) } : c));
+            const updated = await Store.customers.update(customer.id, { points: Math.max(0, (customer.points||0) - toBurnPts) })
+            if (updated) setCustomers((cs:any[]) => cs.map(c => c.id===customer.id ? updated : c))
           }
-          onConfirm([
+          await onConfirm([
             cash>0 && { method: "CASH", amount: cash },
             card>0 && { method: "CARD", amount: card },
             usePoints>0 && { method: "LOYALTY", amount: usePoints },
@@ -441,17 +447,19 @@ function Reservations({ gazebos, customers, reservations, setReservations }:{
     return reservations.filter(r => r.startAt.slice(0,10)===date && r.resourceId===selGazebo);
   }, [reservations, date, selGazebo]);
 
-  function toggleSlot(hour:number){
+  async function toggleSlot(hour:number){
     if (selGazebo === NONE) return;
     const startAt = toMoscowSlotISO(date,hour);
     const endAt = toMoscowSlotISO(date,hour+1);
     const existing = (dayRes as any[]).find(r => r.startAt===startAt);
     if (existing){
+      await Store.reservations.delete(existing.id);
       setReservations(reservations.filter(r => r.id !== existing.id));
     } else {
       if (customers.length===0) return;
       const r = { id: `r_${Date.now()}_${hour}`, resourceId: selGazebo, customerId: customers[0].id, status: "HELD", startAt, endAt, prepayAmount: 0 };
-      setReservations([r, ...reservations]);
+      const saved = await Store.reservations.save(r);
+      setReservations([saved, ...reservations]);
     }
   }
 
@@ -505,10 +513,12 @@ function CRM({ customers, setCustomers, orders }:{customers:any[], setCustomers:
 
   const filtered = useMemo(() => customers.filter(c => (c.fullName+" "+c.phone).toLowerCase().includes(q.toLowerCase())), [customers, q]);
 
-  function addCustomer(){
+  async function addCustomer(){
     if (!fullName || !phone) return;
     const id = `c_${Date.now()}`;
-    setCustomers([{ id, fullName, phone, tier: "Bronze", points: 0 }, ...customers]);
+    const customer = { id, fullName, phone, tier: "Bronze", points: 0 };
+    const saved = await Store.customers.save(customer);
+    setCustomers([saved, ...customers]);
     setFullName(""); setPhone("");
   }
 
@@ -668,14 +678,20 @@ function Admin({ products, setProducts, settings, setSettings }:{
   const [isWeightable, setIsWeightable] = useState(true);
   const [price, setPrice] = useState<any>(0);
 
-  function addProduct(){
+  async function addProduct(){
     if (!name) return;
     const id = `p_${Date.now()}`;
-    setProducts([{ id, name, type, unit, isWeightable, price: Number(price||0), group, isActive: true }, ...products]);
+    const product = { id, name, type, unit, isWeightable, price: Number(price||0), group, isActive: true };
+    const saved = await Store.products.save(product);
+    setProducts([saved, ...products]);
     setName(""); setPrice(0); setIsWeightable(unit==="KG"); setType("GOOD"); setGroup("Рыба");
   }
 
-  function toggleActive(id:string){ setProducts(products.map((p:any) => p.id===id ? { ...p, isActive: !p.isActive } : p)); }
+  async function toggleActive(id:string){
+    const existing = products.find((p:any) => p.id===id);
+    const updated = await Store.products.update(id, { isActive: !existing?.isActive });
+    if (updated) setProducts(products.map((p:any) => p.id===id ? updated : p));
+  }
 
   return (
     <div className="grid md:grid-cols-3 gap-4">

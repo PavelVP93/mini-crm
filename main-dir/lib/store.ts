@@ -6,7 +6,8 @@ const LS_KEYS = {
   products: 'fishing_products',
   customers: 'fishing_customers',
   orders: 'fishing_orders',
-  reservations: 'fishing_reservations'
+  reservations: 'fishing_reservations',
+  settings: 'fishing_settings'
 } as const
 
 function readLS<T>(key: string, fallback: T): T {
@@ -37,6 +38,10 @@ function makeStore(api: any, key: string) {
       writeLS(key, items)
       return item
     },
+    async saveAll<T>(items: T[]) {
+      if (USE_API) return
+      writeLS(key, items)
+    },
     async update<T extends { id: string | number }>(id: string | number, patch: Partial<T>) {
       if (USE_API) return api.update<T>(id, patch)
       const items = readLS<T[]>(key, [])
@@ -48,6 +53,12 @@ function makeStore(api: any, key: string) {
         return updated
       }
       return null
+    },
+    async delete(id: string | number) {
+      if (USE_API) return api.delete(id)
+      const items = readLS<any[]>(key, [])
+      const filtered = items.filter((it: any) => it.id !== id)
+      writeLS(key, filtered)
     }
   }
 }
@@ -56,7 +67,16 @@ const Store = {
   products: makeStore(new API.Products(), LS_KEYS.products),
   customers: makeStore(new API.Customers(), LS_KEYS.customers),
   orders: makeStore(new API.Orders(), LS_KEYS.orders),
-  reservations: makeStore(new API.Reservations(), LS_KEYS.reservations)
+  reservations: makeStore(new API.Reservations(), LS_KEYS.reservations),
+  settings: {
+    async get<T>(fallback: T) {
+      return readLS<T>(LS_KEYS.settings, fallback)
+    },
+    async save<T>(value: T) {
+      writeLS(LS_KEYS.settings, value)
+      return value
+    }
+  }
 }
 
 export default Store
