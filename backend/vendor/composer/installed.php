@@ -3,7 +3,7 @@
         'name' => 'fishing/pos-php',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '5946ee13122bdc7ea9c3c1d9f2c2cc7b5586d1d5',
+        'reference' => 'c247b7fac24a278e838a3e1ed81a4181729074ad',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -22,7 +22,7 @@
         'fishing/pos-php' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '5946ee13122bdc7ea9c3c1d9f2c2cc7b5586d1d5',
+            'reference' => 'c247b7fac24a278e838a3e1ed81a4181729074ad',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

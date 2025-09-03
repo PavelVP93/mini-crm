@@ -7,5 +7,10 @@
     },
     "scripts": {
         "test": "php ./vendor/bin/phpunit"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
     }
 }

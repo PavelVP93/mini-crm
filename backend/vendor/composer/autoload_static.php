@@ -44,6 +44,10 @@ class ComposerStaticInit389d084a8df2399d6f8a3a22ccf1e374
         array (
             'Dotenv\\' => 7,
         ),
+        'A' => 
+        array (
+            'App\\' => 4,
+        ),
     );
 
     public static $prefixDirsPsr4 = array (
@@ -105,9 +109,22 @@ class ComposerStaticInit389d084a8df2399d6f8a3a22ccf1e374
         array (
             0 => __DIR__ . '/..' . '/vlucas/phpdotenv/src',
         ),
+        'App\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/src',
+        ),
     );
 
     public static $classMap = array (
+        'App\\Controllers\\CatalogController' => __DIR__ . '/../..' . '/src/Controllers/CatalogController.php',
+        'App\\Controllers\\CustomersController' => __DIR__ . '/../..' . '/src/Controllers/CustomersController.php',
+        'App\\Controllers\\LoyaltyController' => __DIR__ . '/../..' . '/src/Controllers/LoyaltyController.php',
+        'App\\Controllers\\OrdersController' => __DIR__ . '/../..' . '/src/Controllers/OrdersController.php',
+        'App\\Controllers\\ProductsController' => __DIR__ . '/../..' . '/src/Controllers/ProductsController.php',
+        'App\\Controllers\\ReservationsController' => __DIR__ . '/../..' . '/src/Controllers/ReservationsController.php',
+        'App\\Controllers\\RolesController' => __DIR__ . '/../..' . '/src/Controllers/RolesController.php',
+        'App\\Controllers\\UsersController' => __DIR__ . '/../..' . '/src/Controllers/UsersController.php',
+        'App\\Time' => __DIR__ . '/../..' . '/src/Time.php',
         'Attribute' => __DIR__ . '/..' . '/symfony/polyfill-php80/Resources/stubs/Attribute.php',
         'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
         'Dotenv\\Dotenv' => __DIR__ . '/..' . '/vlucas/phpdotenv/src/Dotenv.php',
