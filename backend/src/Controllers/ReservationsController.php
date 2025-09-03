@@ -50,4 +50,10 @@ class ReservationsController {
     if($fields){ $vals[]=$id; DB::pdo()->prepare("UPDATE reservation SET ".implode(',',$fields)." WHERE id=?")->execute($vals); }
     return json($res,['ok'=>true]);
   }
+
+  public function delete($req,$res,$args){
+    $id=$args['id'];
+    DB::pdo()->prepare("DELETE FROM reservation WHERE id=?")->execute([$id]);
+    return json($res,['ok'=>true]);
+  }
 }
