@@ -14,6 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ShoppingCart, Scale, Calendar as CalendarIcon, Users, BarChart2, Settings, Trash2, Plus, Minus, CreditCard, Wallet } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, BarChart, Bar } from "recharts";
 import { todayMoscowISO, toMoscowSlotISO } from "@/lib/time";
+import Categories from "@/components/pos/Categories";
 
 // ---------- Helpers / constants ----------
 const NONE = "__NONE__"; // sentinel for empty Select choice (valid non-empty string)
@@ -127,6 +128,7 @@ function POS({ products, settings, customers, setCustomers, onPaid }:{
   products:any[], settings:any, customers:any[], setCustomers:any, onPaid:(o:any)=>void
 }){
   const [search, setSearch] = useState("");
+  const [category, setCategory] = useState<string|null>(null);
   const [cart, setCart] = useState<any[]>([]);
   const [connected, setConnected] = useState(settings.weight.simulateScale);
   const [liveWeight, setLiveWeight] = useState(0);
@@ -151,9 +153,18 @@ function POS({ products, settings, customers, setCustomers, onPaid }:{
     return () => clearInterval(t);
   }, [connected, settings.weight.rounding]);
 
+  const categories = useMemo(
+    () => Array.from(new Set(products.filter(p => p.isActive).map((p:any) => p.group))).filter(Boolean) as string[],
+    [products]
+  );
+
   const filtered = useMemo(
-    () => products.filter(p => p.isActive && (p.name.toLowerCase().includes(search.toLowerCase()) || (p.group||"").toLowerCase().includes(search.toLowerCase()))),
-    [products, search]
+    () => products.filter(p =>
+      p.isActive &&
+      (!category || p.group === category) &&
+      (p.name.toLowerCase().includes(search.toLowerCase()) || (p.group || "").toLowerCase().includes(search.toLowerCase()))
+    ),
+    [products, search, category]
   );
 
   const totals = useMemo(() => {
@@ -213,8 +224,6 @@ function POS({ products, settings, customers, setCustomers, onPaid }:{
     setCustomerId(null);
   }
 
-  const groups = Array.from(new Set(filtered.map((p:any)=>p.group))).filter(Boolean) as string[];
-
   return (
     <div className="grid md:grid-cols-3 gap-4">
       <div className="md:col-span-2 space-y-4">
@@ -225,12 +234,10 @@ function POS({ products, settings, customers, setCustomers, onPaid }:{
               <Badge>Активно: {filtered.length}</Badge>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <Categories categories={categories} current={category} onSelect={setCategory} />
             <ScrollArea className="h-[360px] pr-2">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {groups.map(g => (
-                  <div key={g} className="col-span-full text-xs uppercase text-muted-foreground mt-2">{g}</div>
-                ))}
                 {filtered.map((p:any) => (
                   <button key={p.id} onClick={()=>addProduct(p)} className="text-left p-3 rounded-2xl border hover:shadow transition flex flex-col gap-1">
                     <div className="font-medium leading-tight">{p.name}</div>
