@@ -4,6 +4,8 @@ import { useState, FormEvent, ChangeEvent } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 
 export interface WeightProductProps {
   onSubmit: (payload: { weightKg: number }) => void;
@@ -30,6 +32,11 @@ export default function WeightProduct({ onSubmit }: WeightProductProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-2">
+      <div className="flex justify-end">
+        <Tooltip text="Введите вес товара и нажмите \"Добавить\"">
+          <Info className="h-4 w-4 text-muted-foreground" />
+        </Tooltip>
+      </div>
       <div>
         <Label htmlFor="weight">Вес (кг)</Label>
         <Input

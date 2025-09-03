@@ -5,6 +5,8 @@ import InputMask from "react-input-mask";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 
 export interface CustomerFormProps {
   initial?: { fullName?: string; phones?: string[] };
@@ -34,6 +36,11 @@ export function CustomerForm({ initial, onSubmit }: CustomerFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-2">
+      <div className="flex justify-end">
+        <Tooltip text="Введите ФИО и телефоны клиента">
+          <Info className="h-4 w-4 text-muted-foreground" />
+        </Tooltip>
+      </div>
       <div>
         <Label htmlFor="fullName">ФИО</Label>
         <Input
