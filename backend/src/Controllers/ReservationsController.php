@@ -21,7 +21,9 @@ class ReservationsController {
     return json($res,$rows);
   }
   public function create($req,$res){
-    $d=(array) json_decode((string)$req->getBody(), true);
+    $d=json_decode((string)$req->getBody(), true);
+    if(json_last_error()!==JSON_ERROR_NONE){ return json($res,['error'=>'Invalid JSON'],400); }
+    $d=(array)$d;
     $id='r_'.bin2hex(random_bytes(9));
     try{
       $start=Time::fromClient($d['startAt']);
@@ -38,7 +40,10 @@ class ReservationsController {
     return json($res,['id'=>$id],201);
   }
   public function update($req,$res,$args){
-    $id=$args['id']; $d=(array) json_decode((string)$req->getBody(), true);
+    $id=$args['id'];
+    $d=json_decode((string)$req->getBody(), true);
+    if(json_last_error()!==JSON_ERROR_NONE){ return json($res,['error'=>'Invalid JSON'],400); }
+    $d=(array)$d;
     $fields=[];$vals=[];
     foreach(['status','startAt','endAt','prepayAmount','notes'] as $f){
       if(array_key_exists($f,$d)){

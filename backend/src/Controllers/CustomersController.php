@@ -30,7 +30,9 @@ class CustomersController {
     return json($res,$rows);
   }
   public function create($req,$res){
-    $d=(array) json_decode((string)$req->getBody(), true);
+    $d=json_decode((string)$req->getBody(), true);
+    if(json_last_error()!==JSON_ERROR_NONE){ return json($res,['error'=>'Invalid JSON'],400); }
+    $d=(array)$d;
     $phones=$d['phones']??(isset($d['phone'])?[$d['phone']]:[]);
     $phones=array_values(array_filter($phones));
     if(!$phones){ return json($res,['error'=>'Phone required'],400); }
@@ -44,7 +46,9 @@ class CustomersController {
   }
   public function update($req,$res,$args){
     $id=$args['id'];
-    $d=(array) json_decode((string)$req->getBody(), true);
+    $d=json_decode((string)$req->getBody(), true);
+    if(json_last_error()!==JSON_ERROR_NONE){ return json($res,['error'=>'Invalid JSON'],400); }
+    $d=(array)$d;
     $phones=$d['phones']??(isset($d['phone'])?[$d['phone']]:null);
     if($phones!==null){
       $phones=array_values(array_filter($phones));
