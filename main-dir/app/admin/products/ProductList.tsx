@@ -1,12 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-
-export interface Product {
-  id: string;
-  name: string;
-  currentPrice?: number;
-}
+import type { Product } from "./types";
 
 export interface ProductListProps {
   products: Product[];
