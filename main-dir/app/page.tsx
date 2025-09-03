@@ -440,6 +440,9 @@ function Reservations({ gazebos, customers, reservations, setReservations }:{
   const [date, setDate] = useState(todayMoscowISO());
   const [selGazebo, setSelGazebo] = useState<string>(gazebos[0]?.id ?? NONE);
   const hours = Array.from({length: 15}, (_,i)=> i+8); // 08..22
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const reservationsApi = useMemo(() => new API.Reservations(), []);
 
   const dayRes = useMemo(() => {
     if (selGazebo === NONE) return [];
@@ -451,14 +454,22 @@ function Reservations({ gazebos, customers, reservations, setReservations }:{
     const startAt = toMoscowSlotISO(date,hour);
     const endAt = toMoscowSlotISO(date,hour+1);
     const existing = (dayRes as any[]).find(r => r.startAt===startAt);
-    if (existing){
-      await Store.reservations.delete(existing.id);
-      setReservations(reservations.filter(r => r.id !== existing.id));
-    } else {
-      if (customers.length===0) return;
-      const r = { id: `r_${Date.now()}_${hour}`, resourceId: selGazebo, customerId: customers[0].id, status: "HELD", startAt, endAt, prepayAmount: 0 };
-      const saved = await Store.reservations.save(r);
-      setReservations([saved, ...reservations]);
+    if (!existing && customers.length===0) return;
+    setLoading(true);
+    setError(null);
+    try {
+      if (existing){
+        await reservationsApi.delete(existing.id);
+      } else {
+        const r = { resourceId: selGazebo, customerId: customers[0].id, status: "HELD", startAt, endAt, prepayAmount: 0 };
+        await reservationsApi.create(r);
+      }
+      const updated = await Store.getReservations<any[]>();
+      setReservations(updated);
+    } catch (e:any) {
+      setError(e.message || 'Не удалось обновить бронирование');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -492,12 +503,14 @@ function Reservations({ gazebos, customers, reservations, setReservations }:{
         <CardContent>
           <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-2">
             {hours.map(h => (
-              <button key={h} onClick={()=>toggleSlot(h)} disabled={selGazebo===NONE} className={`rounded-2xl p-3 border text-left ${selGazebo===NONE?"opacity-50 cursor-not-allowed": isBooked(h)?"bg-green-50 border-green-300":"hover:shadow"}`}>
+              <button key={h} onClick={()=>toggleSlot(h)} disabled={selGazebo===NONE || loading} className={`rounded-2xl p-3 border text-left ${(selGazebo===NONE || loading)?"opacity-50 cursor-not-allowed": isBooked(h)?"bg-green-50 border-green-300":"hover:shadow"}`}>
                 <div className="text-sm font-medium">{String(h).padStart(2,'0')}:00 – {String(h+1).padStart(2,'0')}:00</div>
                 <div className="text-xs text-muted-foreground">{selGazebo===NONE?"Выберите беседку": isBooked(h)?"Забронировано":"Свободно"}</div>
               </button>
             ))}
           </div>
+          {loading && <div className="text-sm text-muted-foreground mt-2">Сохранение...</div>}
+          {error && <div className="text-sm text-red-600 mt-2">{error}</div>}
         </CardContent>
       </Card>
     </div>

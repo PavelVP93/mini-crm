@@ -68,6 +68,9 @@ const Store = {
   customers: makeStore(new API.Customers(), LS_KEYS.customers),
   orders: makeStore(new API.Orders(), LS_KEYS.orders),
   reservations: makeStore(new API.Reservations(), LS_KEYS.reservations),
+  async getReservations<T>() {
+    return this.reservations.get<T>()
+  },
   settings: {
     async get<T>(fallback: T) {
       return readLS<T>(LS_KEYS.settings, fallback)
