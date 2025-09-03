@@ -4,6 +4,8 @@ import { useState, FormEvent } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 import {
   Select,
   SelectTrigger,
@@ -59,6 +61,11 @@ export function ReservationForm({ customers, onSubmit }: ReservationFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="flex justify-end">
+        <Tooltip text="Выберите клиента и укажите время бронирования">
+          <Info className="h-4 w-4 text-muted-foreground" />
+        </Tooltip>
+      </div>
       <div className="space-y-2">
         <Label htmlFor="customer">Customer</Label>
         <Select value={customerId} onValueChange={setCustomerId} aria-required="true">
