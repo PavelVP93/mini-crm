@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import ProductForm from "./ProductForm";
 import ProductList from "./ProductList";
-import type { Product } from "./ProductForm";
+import type { Product } from "./types";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);

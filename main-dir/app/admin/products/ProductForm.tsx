@@ -11,16 +11,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-
-export interface Product {
-  id?: string;
-  name: string;
-  sku?: string;
-  type: "GOOD" | "SERVICE";
-  unit: "KG" | "HOUR" | "PIECE";
-  price?: number;
-  currentPrice?: number;
-}
+import type { Product } from "./types";
 
 export interface ProductFormProps {
   initial?: Product | null;
