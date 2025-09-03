@@ -15,6 +15,7 @@ import { ShoppingCart, Scale, Calendar as CalendarIcon, Users, BarChart2, Settin
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, BarChart, Bar } from "recharts";
 import { todayMoscowISO, toMoscowSlotISO } from "@/lib/time";
 import Categories from "@/components/pos/Categories";
+import Store from "@/lib/store";
 
 // ---------- Helpers / constants ----------
 const NONE = "__NONE__"; // sentinel for empty Select choice (valid non-empty string)
@@ -22,19 +23,6 @@ const NONE = "__NONE__"; // sentinel for empty Select choice (valid non-empty st
 const currency = (n:number) => new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 2 }).format(n || 0);
 const kg = (n:number) => `${(n ?? 0).toFixed(2)} кг`;
 const rand = (min:number, max:number) => Math.random() * (max - min) + min;
-
-const LS = {
-  products: "fishing_products",
-  customers: "fishing_customers",
-  orders: "fishing_orders",
-  reservations: "fishing_reservations",
-  settings: "fishing_settings",
-} as const;
-
-function loadLS<T>(key: string, fallback: T): T {
-  try { const v = JSON.parse(localStorage.getItem(key) || "null"); return (v ?? fallback) as T; } catch { return fallback; }
-}
-function saveLS<T>(key: string, value: T) { localStorage.setItem(key, JSON.stringify(value)); }
 
 // ---------- Mock data ----------
 const DEFAULT_PRODUCTS = [
@@ -75,18 +63,19 @@ export default function App() {
   const [tab, setTab] = useState("pos");
 
   useEffect(() => {
-    setProducts(loadLS(LS.products, DEFAULT_PRODUCTS));
-    setCustomers(loadLS(LS.customers, DEFAULT_CUSTOMERS));
-    setOrders(loadLS(LS.orders, []));
-    setReservations(loadLS(LS.reservations, []));
-    setSettings(loadLS(LS.settings, DEFAULT_SETTINGS));
+    (async () => {
+      const loadedProducts = await Store.products.get().catch(() => DEFAULT_PRODUCTS);
+      const loadedCustomers = await Store.customers.get().catch(() => DEFAULT_CUSTOMERS);
+      const loadedOrders = await Store.orders.get().catch(() => []);
+      const loadedReservations = await Store.reservations.get().catch(() => []);
+      const loadedSettings = await Store.settings.get(DEFAULT_SETTINGS).catch(() => DEFAULT_SETTINGS);
+      setProducts(loadedProducts.length ? loadedProducts : DEFAULT_PRODUCTS);
+      setCustomers(loadedCustomers.length ? loadedCustomers : DEFAULT_CUSTOMERS);
+      setOrders(loadedOrders);
+      setReservations(loadedReservations);
+      setSettings(loadedSettings);
+    })();
   }, []);
-
-  useEffect(() => saveLS(LS.products, products), [products]);
-  useEffect(() => saveLS(LS.customers, customers), [customers]);
-  useEffect(() => saveLS(LS.orders, orders), [orders]);
-  useEffect(() => saveLS(LS.reservations, reservations), [reservations]);
-  useEffect(() => saveLS(LS.settings, settings), [settings]);
 
   // Safety self-test for Select sentinel mapping
   useEffect(() => {
@@ -201,7 +190,7 @@ function POS({ products, settings, customers, setCustomers, onPaid }:{
     setCart(cart.map((it, i) => i !== idx ? it : ({...it, discountPct: pct, total: (it.weightKg ? it.unitPrice * it.weightKg : it.unitPrice * it.qty) * (1 - pct/100)})));
   }
 
-  function handlePaid(payments:any[]){
+  async function handlePaid(payments:any[]){
     const id = `o_${Date.now()}`;
     const number = `POS-${new Date().toISOString().slice(0,10).replaceAll('-','')}-${String(Math.floor(Math.random()*999)).padStart(3,'0')}`;
     const status = "PAID";
@@ -214,11 +203,16 @@ function POS({ products, settings, customers, setCustomers, onPaid }:{
     // Loyalty earn
     if (custId) {
       const earn = totalsFull.grand >= (settings.loyalty.minOrderForEarn||0) ? Math.floor(totalsFull.grand * (settings.loyalty.earnRate||0)) : 0;
-      setCustomers((cs:any[]) => cs.map(c => c.id===custId ? { ...c, points: (c.points||0)+earn } : c));
+      if (earn > 0) {
+        const current = customers.find((c:any) => c.id === custId);
+        const updated = await Store.customers.update(custId, { points: (current?.points||0) + earn });
+        setCustomers((cs:any[]) => cs.map(c => c.id===custId ? updated : c));
+      }
     }
 
     const order = { id, number, items, payments, customerId: custId, status, createdAt, paidAt, totals: totalsFull };
-    onPaid(order);
+    const saved = await Store.orders.save(order);
+    onPaid(saved);
     setCart([]);
     setDiscountPct(0);
     setCustomerId(null);
@@ -352,7 +346,9 @@ function POS({ products, settings, customers, setCustomers, onPaid }:{
 
 function LastOrdersMini(){
   const [orders, setOrders] = useState<any[]>([]);
-  useEffect(()=>{ setOrders(loadLS(LS.orders, [])); }, []);
+  useEffect(() => {
+    Store.orders.get().then(setOrders);
+  }, []);
   return (
     <Card>
       <CardHeader className="pb-2"><CardTitle className="text-base">Последние продажи</CardTitle></CardHeader>
@@ -412,10 +408,11 @@ function PayDialog({ amount, onCancel, onConfirm, customerId, customers, setCust
       </div>
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>Отмена</Button>
-        <Button disabled={due!==0} onClick={()=>{
+        <Button disabled={due!==0} onClick={async ()=>{
           if (customer && usePoints>0){
             const toBurnPts = Math.ceil(usePoints / (settings.loyalty.redeemRate||1));
-            setCustomers((cs:any[]) => cs.map(c => c.id===customer.id ? { ...c, points: Math.max(0, (c.points||0) - toBurnPts) } : c));
+            const updated = await Store.customers.update(customer.id, { points: Math.max(0, (customer.points||0) - toBurnPts) });
+            setCustomers((cs:any[]) => cs.map(c => c.id===customer.id ? updated : c));
           }
           onConfirm([
             cash>0 && { method: "CASH", amount: cash },
@@ -441,17 +438,19 @@ function Reservations({ gazebos, customers, reservations, setReservations }:{
     return reservations.filter(r => r.startAt.slice(0,10)===date && r.resourceId===selGazebo);
   }, [reservations, date, selGazebo]);
 
-  function toggleSlot(hour:number){
+  async function toggleSlot(hour:number){
     if (selGazebo === NONE) return;
     const startAt = toMoscowSlotISO(date,hour);
     const endAt = toMoscowSlotISO(date,hour+1);
     const existing = (dayRes as any[]).find(r => r.startAt===startAt);
     if (existing){
+      await Store.reservations.delete(existing.id);
       setReservations(reservations.filter(r => r.id !== existing.id));
     } else {
       if (customers.length===0) return;
       const r = { id: `r_${Date.now()}_${hour}`, resourceId: selGazebo, customerId: customers[0].id, status: "HELD", startAt, endAt, prepayAmount: 0 };
-      setReservations([r, ...reservations]);
+      const saved = await Store.reservations.save(r);
+      setReservations([saved, ...reservations]);
     }
   }
 
@@ -505,10 +504,11 @@ function CRM({ customers, setCustomers, orders }:{customers:any[], setCustomers:
 
   const filtered = useMemo(() => customers.filter(c => (c.fullName+" "+c.phone).toLowerCase().includes(q.toLowerCase())), [customers, q]);
 
-  function addCustomer(){
+  async function addCustomer(){
     if (!fullName || !phone) return;
     const id = `c_${Date.now()}`;
-    setCustomers([{ id, fullName, phone, tier: "Bronze", points: 0 }, ...customers]);
+    const saved = await Store.customers.save({ id, fullName, phone, tier: "Bronze", points: 0 });
+    setCustomers([saved, ...customers]);
     setFullName(""); setPhone("");
   }
 
@@ -668,14 +668,33 @@ function Admin({ products, setProducts, settings, setSettings }:{
   const [isWeightable, setIsWeightable] = useState(true);
   const [price, setPrice] = useState<any>(0);
 
-  function addProduct(){
+  async function saveSettings(next:any){
+    const saved = await Store.settings.save(next);
+    setSettings(saved);
+  }
+  const updateWeight = async (patch:any) => {
+    const next = { ...settings, weight: { ...settings.weight, ...patch } };
+    await saveSettings(next);
+  };
+  const updateLoyalty = async (patch:any) => {
+    const next = { ...settings, loyalty: { ...settings.loyalty, ...patch } };
+    await saveSettings(next);
+  };
+
+  async function addProduct(){
     if (!name) return;
     const id = `p_${Date.now()}`;
-    setProducts([{ id, name, type, unit, isWeightable, price: Number(price||0), group, isActive: true }, ...products]);
+    const saved = await Store.products.save({ id, name, type, unit, isWeightable, price: Number(price||0), group, isActive: true });
+    setProducts([saved, ...products]);
     setName(""); setPrice(0); setIsWeightable(unit==="KG"); setType("GOOD"); setGroup("Рыба");
   }
 
-  function toggleActive(id:string){ setProducts(products.map((p:any) => p.id===id ? { ...p, isActive: !p.isActive } : p)); }
+  async function toggleActive(id:string){
+    const p = products.find((pr:any) => pr.id === id);
+    if (!p) return;
+    const updated = await Store.products.update(id, { isActive: !p.isActive });
+    if (updated) setProducts(products.map((pr:any) => pr.id===id ? updated : pr));
+  }
 
   return (
     <div className="grid md:grid-cols-3 gap-4">
@@ -773,27 +792,27 @@ function Admin({ products, setProducts, settings, setSettings }:{
             <div className="font-medium">Весы</div>
             <div className="grid grid-cols-2 gap-2 items-center">
               <Label>Округление (кг)</Label>
-              <Input type="number" step="0.01" value={settings.weight.rounding} onChange={(e)=>setSettings({...settings, weight: { ...settings.weight, rounding: Number(e.target.value||0.01) }})}/>
+              <Input type="number" step="0.01" value={settings.weight.rounding} onChange={async (e)=>updateWeight({ rounding: Number(e.target.value||0.01) })}/>
               <Label>Протокол</Label>
-              <Select value={settings.weight.protocol} onValueChange={(v)=>setSettings({...settings, weight:{...settings.weight, protocol:v}})}>
+              <Select value={settings.weight.protocol} onValueChange={async (v)=>updateWeight({ protocol:v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {['AUTODETECT','RS232','TCPIP'].map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Label>Симуляция</Label>
-              <Switch checked={settings.weight.simulateScale} onCheckedChange={(v)=>setSettings({...settings, weight:{...settings.weight, simulateScale:v}})} />
+              <Switch checked={settings.weight.simulateScale} onCheckedChange={async (v)=>updateWeight({ simulateScale:v })} />
             </div>
           </div>
           <div className="rounded-2xl border p-3 space-y-2">
             <div className="font-medium">Лояльность</div>
             <div className="grid grid-cols-2 gap-2 items-center">
               <Label>Earn rate</Label>
-              <Input type="number" step="0.01" value={settings.loyalty.earnRate} onChange={(e)=>setSettings({...settings, loyalty:{...settings.loyalty, earnRate:Number(e.target.value||0)}})} />
+              <Input type="number" step="0.01" value={settings.loyalty.earnRate} onChange={async (e)=>updateLoyalty({ earnRate:Number(e.target.value||0) })} />
               <Label>Redeem ₽/балл</Label>
-              <Input type="number" value={settings.loyalty.redeemRate} onChange={(e)=>setSettings({...settings, loyalty:{...settings.loyalty, redeemRate:Number(e.target.value||1)}})} />
+              <Input type="number" value={settings.loyalty.redeemRate} onChange={async (e)=>updateLoyalty({ redeemRate:Number(e.target.value||1) })} />
               <Label>Мин. чек для earn</Label>
-              <Input type="number" value={settings.loyalty.minOrderForEarn} onChange={(e)=>setSettings({...settings, loyalty:{...settings.loyalty, minOrderForEarn:Number(e.target.value||0)}})} />
+              <Input type="number" value={settings.loyalty.minOrderForEarn} onChange={async (e)=>updateLoyalty({ minOrderForEarn:Number(e.target.value||0) })} />
             </div>
           </div>
           <div className="rounded-2xl border p-3 space-y-2">
