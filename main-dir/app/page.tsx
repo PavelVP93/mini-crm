@@ -16,6 +16,7 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend, Ba
 import { todayMoscowISO, toMoscowSlotISO } from "@/lib/time";
 import Categories from "@/components/pos/Categories";
 import Store, { USE_API } from "@/lib/store";
+import API from "@/lib/api";
 
 // ---------- Helpers / constants ----------
 const NONE = "__NONE__"; // sentinel for empty Select choice (valid non-empty string)
@@ -111,7 +112,7 @@ export default function App() {
           <TabsTrigger value="admin" className="flex items-center gap-2"><Settings className="h-4 w-4"/>Админ</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="pos"><POS products={products} settings={settings} customers={customers} setCustomers={setCustomers} onPaid={async (o:any)=>{ const saved = await Store.orders.save(o); setOrders((os:any[]) => [saved, ...os]); }}/></TabsContent>
+        <TabsContent value="pos"><POS products={products} settings={settings} customers={customers} setCustomers={setCustomers} onPaid={async (o:any)=>{ setOrders((os:any[]) => [o, ...os]); }}/></TabsContent>
         <TabsContent value="reservations"><Reservations gazebos={DEFAULT_GAZEBOS} customers={customers} reservations={reservations} setReservations={setReservations} /></TabsContent>
         <TabsContent value="crm"><CRM customers={customers} setCustomers={setCustomers} orders={orders}/></TabsContent>
         <TabsContent value="reports"><Reports orders={orders} reservations={reservations} products={products}/></TabsContent>
@@ -200,11 +201,7 @@ function POS({ products, settings, customers, setCustomers, onPaid }:{
   }
 
   async function handlePaid(payments:any[]){
-    const id = `o_${Date.now()}`;
-    const number = `POS-${new Date().toISOString().slice(0,10).replaceAll('-','')}-${String(Math.floor(Math.random()*999)).padStart(3,'0')}`;
     const status = "PAID";
-    const createdAt = new Date().toISOString();
-    const paidAt = createdAt;
     const items = cart;
     const totalsFull = { ...totals };
     const custId = customerId;
@@ -217,7 +214,9 @@ function POS({ products, settings, customers, setCustomers, onPaid }:{
       if (updated) setCustomers((cs:any[]) => cs.map(c => c.id===custId ? updated : c))
     }
 
-    const order = { id, number, items, payments, customerId: custId, status, createdAt, paidAt, totals: totalsFull };
+    const request = { customerId: custId, cashierId: 'u_anon', status, items, payments, totals: totalsFull };
+    const saved = await new API.Orders().create<any>(request);
+    const order = { ...request, ...saved, createdAt: new Date().toISOString(), paidAt: new Date().toISOString() };
     await onPaid(order);
     setCart([]);
     setDiscountPct(0);
