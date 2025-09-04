@@ -1,9 +1,20 @@
 const BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/$/, '')
 
+let token: string | null = null
+
+export function setToken(t: string | null) {
+  token = t
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   try {
     const res = await fetch(`${BASE_URL}/${path.replace(/^\//, '')}`, {
-      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(options.headers || {})
+      },
       ...options
     })
 
@@ -15,6 +26,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       } catch {
         throw new Error('Invalid JSON response')
       }
+    }
+
+    if (res.status === 401) {
+      setToken(null)
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login'
+      }
+      throw new Error((data && data.message) || res.statusText)
     }
 
     if (!res.ok) {
