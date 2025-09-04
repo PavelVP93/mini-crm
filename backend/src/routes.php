@@ -7,6 +7,7 @@ use App\Controllers\UsersController;
 use App\Controllers\RolesController;
 use App\Controllers\OrdersController;
 use App\Controllers\ReservationsController;
+use App\Controllers\AuthController;
 
 $c = new CustomersController();
 $app->get('/customers', [$c, 'list']);
@@ -54,3 +55,6 @@ $app->get('/roles', [$r, 'list']);
 $app->post('/roles', [$r, 'create']);
 $app->put('/roles/{id}', [$r, 'update']);
 $app->delete('/roles/{id}', [$r, 'delete']);
+
+$auth = new AuthController();
+$app->post('/login', [$auth, 'login']);
