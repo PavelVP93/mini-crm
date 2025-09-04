@@ -16,7 +16,9 @@ class UsersController {
     if(json_last_error()!==JSON_ERROR_NONE){ return json($res,['error'=>'Invalid JSON'],400); }
     $d=(array)$d;
     $id='u_'.bin2hex(random_bytes(9));
-    DB::pdo()->prepare("INSERT INTO users (id,fullName,email) VALUES (?,?,?)")->execute([$id,$d['fullName'],$d['email']??null]);
+    $passwordHash=$d['passwordHash']??(isset($d['password'])?password_hash((string)$d['password'],PASSWORD_DEFAULT):null);
+    DB::pdo()->prepare("INSERT INTO users (id,fullName,email,passwordHash) VALUES (?,?,?,?)")
+      ->execute([$id,$d['fullName'],$d['email']??null,$passwordHash]);
     if(!empty($d['roles'])){
       $ins=DB::pdo()->prepare("INSERT INTO user_roles (userId,roleId) VALUES (?,?)");
       foreach($d['roles'] as $r){ $ins->execute([$id,$r]); }
@@ -30,6 +32,8 @@ class UsersController {
     $d=(array)$d;
     $fields=[];$vals=[];
     foreach(['fullName','email'] as $f){ if(array_key_exists($f,$d)){ $fields[]="$f=?";$vals[]=$d[$f]; } }
+    if(array_key_exists('password',$d)){ $fields[]="passwordHash=?";$vals[] = password_hash((string)$d['password'],PASSWORD_DEFAULT); }
+    elseif(array_key_exists('passwordHash',$d)){ $fields[]="passwordHash=?";$vals[] = $d['passwordHash']; }
     if($fields){ $vals[]=$id; DB::pdo()->prepare("UPDATE users SET ".implode(',',$fields)." WHERE id=?")->execute($vals); }
     if(array_key_exists('roles',$d)){
       DB::pdo()->prepare("DELETE FROM user_roles WHERE userId=?")->execute([$id]);
