@@ -31,10 +31,10 @@ class ReservationsController {
     }catch(\Exception $e){
       return json($res,['error'=>'Invalid datetime'],400);
     }
-    if(empty($d['customer_id'])){
-      return json($res,['error'=>'customer_id required'],400);
+    $customerId = $d['customerId'] ?? $d['customer_id'] ?? null;
+    if (!$customerId) {
+      return json($res,['error'=>'customerId required'],400);
     }
-    $customerId=$d['customer_id'];
     DB::pdo()->prepare("INSERT INTO reservation (id,resourceId,customerId,status,startAt,endAt,prepayAmount,notes) VALUES (?,?,?,?,?,?,?,?)")
       ->execute([$id,$d['resourceId'],$customerId,$d['status']??'HELD',$start,$end,$d['prepayAmount']??null,$d['notes']??null]);
     return json($res,['id'=>$id],201);
