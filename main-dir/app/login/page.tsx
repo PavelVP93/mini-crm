@@ -14,15 +14,21 @@ export default function LoginPage() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const res = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    });
-    if (res.ok) {
-      router.push('/');
-    } else {
-      setError('Неверный логин или пароль');
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+        credentials: 'include'
+      });
+      const data = await res.json();
+      if (res.ok) {
+        router.push('/');
+      } else {
+        setError(data.message || 'Неверный логин или пароль');
+      }
+    } catch {
+      setError('Ошибка сети');
     }
   };
 
